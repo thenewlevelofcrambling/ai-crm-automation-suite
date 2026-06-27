@@ -1,0 +1,296 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead",
+        "authentication": "headerAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7765d303-fc6e-465d-bcdf-784fba82a2e8",
+      "name": "Webhook",
+      "webhookId": "9175a547-e07d-44e6-a79a-3e849d579878",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bQ6XnnRt2FunstU5",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5\",\n  \"max_tokens\": 1024,\n  \"system\": \"Ты — ассистент отдела продаж. Тебе приходит заявка клиента. Проанализируй её и верни строгую классификацию по схеме. priority выбирай из: Высокий (горящий лид, явное намерение купить, срочность, бюджет), Средний (интерес, но без срочности), Низкий (общий вопрос, спам, нерелевантно). summary — одно предложение по-русски. next_step — конкретное действие менеджеру.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Имя: {{ $json.body.name }}\\nEmail: {{ $json.body.email }}\\nТелефон: {{ $json.body.phone }}\\nСообщение: {{ $json.body.message }}\"\n    }\n  ],\n  \"output_config\": {\n    \"format\": {\n      \"type\": \"json_schema\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"category\":  { \"type\": \"string\", \"description\": \"Тематическая категория заявки\" },\n          \"priority\":  { \"type\": \"string\", \"enum\": [\"Высокий\", \"Средний\", \"Низкий\"] },\n          \"summary\":   { \"type\": \"string\", \"description\": \"Краткая выжимка в одно предложение\" },\n          \"next_step\": { \"type\": \"string\", \"description\": \"Следующий шаг менеджера\" }\n        },\n        \"required\": [\"category\", \"priority\", \"summary\", \"next_step\"],\n        \"additionalProperties\": false\n      }\n    }\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        144
+      ],
+      "id": "56f6187e-b814-4eae-9d90-ecfcda60f62e",
+      "name": "HTTP Request",
+      "credentials": {
+        "anthropicApi": {
+          "id": "tLNWH4RTB9kdE7ZR",
+          "name": "Anthropic account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Нода Code в n8n. Mode: \"Run Once for All Items\".\n// Парсит ответ Claude, сливает с данными заявки и НИКОГДА не теряет лид.\n\n// Данные заявки берём из Webhook-ноды (всегда есть).\nconst lead = $('Webhook').first().json.body;\n\n// Пытаемся распарсить ответ AI. Если AI упал, вернул не-JSON,\n// или HTTP-нода передала ошибку (On Error: Continue) — НЕ роняем поток,\n// а подставляем безопасные значения, чтобы заявка дошла до менеджера.\nlet ai;\ntry {\n  ai = JSON.parse($input.first().json.content[0].text);\n} catch (e) {\n  ai = {\n    category: \"Не определён\",\n    priority: \"Не определён\",\n    summary: \"AI не смог обработать заявку — нужна ручная проверка.\",\n    next_step: \"Связаться с клиентом вручную\",\n  };\n}\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    ...lead,\n    // Ведущий апостроф: чтобы Sheets не принял \"+7...\" за формулу (#ERROR!).\n    phone: \"'\" + lead.phone,\n    ...ai,\n    status: \"Новая\",\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        144
+      ],
+      "id": "253ee95d-1187-4695-b33a-1fa57a595fd9",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "ai crm",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "next_step",
+              "displayName": "next_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        560,
+        144
+      ],
+      "id": "675f1145-4217-4b31-901b-7d878177ed19",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "PnIJdAfM3wkEX6R7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=🔔 Новая заявка — приоритет: {{ $json.priority }}  👤 Имя: {{ $json.name }} 📞 Телефон: {{ $json.phone.replace(/^'/, '') }} ✉️ Email: {{ $json.email }} 🏷 Категория: {{ $json.category }}  📝 {{ $json.summary }}  ➡️ Следующий шаг: {{ $json.next_step }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        144
+      ],
+      "id": "724f3517-0105-4d66-9025-f27a0cef7653",
+      "name": "Send a text message",
+      "webhookId": "519b333d-f112-4ef7-a7fd-f195cdbed5da",
+      "credentials": {
+        "telegramApi": {
+          "id": "NKQOCR5ANPNJNd8b",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "22ebed74-ad80-4d0d-9da7-967a62fe3840",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "687c457960b74edb10627fe80f15a3397d423f6f69b76548cee2cdd8e7f64779"
+  },
+  "nodeGroups": [],
+  "id": "9XqoEpNgiwF59ffi",
+  "tags": []
+}

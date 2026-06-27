@@ -1,0 +1,179 @@
+{
+  "name": "rag",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        80
+      ],
+      "id": "f25446a5-b149-4fdd-8794-1b8b259712e2",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "36b3a2d5-594b-4f0a-a7c0-b28d49f46aba",
+              "name": "text",
+              "value": "# База знаний — AI CRM Automation Suite  ## О компании Мы предоставляем систему автоматизации обработки заявок на базе AI. Система принимает заявки из любых каналов (сайт, формы, мессенджеры), анализирует их искусственным интеллектом, заносит в CRM, мгновенно уведомляет менеджера и помогает быстрее закрывать сделки.  ## Что делает продукт - Принимает заявки через webhook из форм, сайтов и чатов. - AI определяет категорию, приоритет (Высокий/Средний/Низкий), делает краткое summary и предлагает следующий шаг. - Записывает заявки в Google Sheets или CRM. - Мгновенно уведомляет ответственного менеджера в Telegram. - Строит дашборд по конверсии, приоритетам и скорости ответа. - Включает AI-бота, который отвечает на вопросы клиентов по базе знаний.  ## Тарифы - **Старт** — 4 900 ₽/мес: до 500 заявок в месяц, 1 менеджер, базовый дашборд. - **Бизнес** — 12 900 ₽/мес: до 5 000 заявок, до 10 менеджеров, расширенный дашборд, приоритетная поддержка. - **Корпоративный** — по запросу: безлимит заявок, неограниченно менеджеров, индивидуальные интеграции, SLA, выделенный менеджер.  ## Пробный период Есть бесплатный пробный период 14 дней на тарифе Бизнес. Карта для активации не требуется.  ## Интеграции Поддерживаем Google Sheets, Telegram, Bitrix24, amoCRM, веб-формы (Tally, Google Forms, HTML). Кастомные интеграции доступны на Корпоративном тарифе через webhook и REST API.  ## Безопасность Данные хранятся в зашифрованном виде. Секреты (API-ключи) не хранятся в открытом виде. На Корпоративном тарифе доступны требования по безопасности, SLA и подписание NDA.  ## Сроки внедрения Базовое внедрение (форма → AI → CRM → Telegram) — от 1 дня. Сложные интеграции и кастомизация — от 1 недели.  ## Поддержка Поддержка по email на всех тарифах. На Бизнес и Корпоративном — приоритетная поддержка и чат. Время ответа поддержки: до 24 часов на Старте, до 4 часов на Бизнес, по SLA на Корпоративном.  ## Возврат средств Возврат в течение 14 дней с момента оплаты, если система не подошла.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        80
+      ],
+      "id": "7da203fa-549d-49be-9651-77469f9d1a6b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "company_kb",
+          "mode": "id"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        80
+      ],
+      "id": "d98aefc9-30a5-4319-8044-a69d1ca4ee66",
+      "name": "Simple Vector Store"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        304,
+        320
+      ],
+      "id": "0a2c3a2b-acb1-4ffe-a68d-d33a49f8d209",
+      "name": "Embeddings Mistral Cloud",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "BMaujHcfkjGj441I",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        288
+      ],
+      "id": "e1db4b60-3d1d-49d2-8c9d-5ff7fff49810",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 500,
+        "chunkOverlap": 50,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        752,
+        416
+      ],
+      "id": "92e30163-a888-42c3-8faf-aa1a7db53178",
+      "name": "Recursive Character Text Splitter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Simple Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Mistral Cloud": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Simple Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Simple Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "32acb61a-4d8e-40d2-aeba-76e8b0cd572d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "687c457960b74edb10627fe80f15a3397d423f6f69b76548cee2cdd8e7f64779"
+  },
+  "nodeGroups": [],
+  "id": "uZYhbkAYZQkg45VT",
+  "tags": []
+}
