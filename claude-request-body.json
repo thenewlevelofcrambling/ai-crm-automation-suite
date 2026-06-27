@@ -1,0 +1,27 @@
+{
+  "model": "claude-haiku-4-5",
+  "max_tokens": 1024,
+  "system": "Ты — ассистент отдела продаж. Тебе приходит заявка клиента. Проанализируй её и верни строгую классификацию по схеме. priority выбирай из: Высокий (горящий лид, явное намерение купить, срочность, бюджет), Средний (интерес, но без срочности), Низкий (общий вопрос, спам, нерелевантно). summary — одно предложение по-русски. next_step — конкретное действие менеджеру.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Имя: {{ $json.body.name }}\nEmail: {{ $json.body.email }}\nТелефон: {{ $json.body.phone }}\nСообщение: {{ $json.body.message }}"
+    }
+  ],
+  "output_config": {
+    "format": {
+      "type": "json_schema",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "category":  { "type": "string", "description": "Тематическая категория заявки" },
+          "priority":  { "type": "string", "enum": ["Высокий", "Средний", "Низкий"] },
+          "summary":   { "type": "string", "description": "Краткая выжимка в одно предложение" },
+          "next_step": { "type": "string", "description": "Следующий шаг менеджера" }
+        },
+        "required": ["category", "priority", "summary", "next_step"],
+        "additionalProperties": false
+      }
+    }
+  }
+}

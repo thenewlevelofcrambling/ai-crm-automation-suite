@@ -1,0 +1,22 @@
+# docker-compose.yml — декларативное описание нашего n8n.
+# Поднять:   docker compose up -d      (-d = detached, в фоне)
+# Логи:      docker compose logs -f
+# Остановить: docker compose down
+
+services:
+  n8n:
+    image: n8nio/n8n:latest          # образ (рецепт) n8n из Docker Hub
+    container_name: n8n              # имя контейнера, чтобы удобно обращаться
+    restart: unless-stopped          # сам поднимется после перезагрузки ПК
+    ports:
+      - "5678:5678"                  # host:container — открываем UI на localhost:5678
+    environment:
+      - GENERIC_TIMEZONE=Europe/Moscow
+      - TZ=Europe/Moscow
+      - N8N_SECURE_COOKIE=false      # для локалки без https, иначе UI не пустит
+      # Базовая защита входа в n8n (поменяй пароль):
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-changeme}
+    volumes:
+      - ./n8n-data:/home/node/.n8n   # ТОМ: данные/workflow переживут рестарт

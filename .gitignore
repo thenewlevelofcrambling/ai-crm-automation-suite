@@ -1,0 +1,17 @@
+# n8n runtime data — содержит encryptionKey и зашифрованные credentials. НИКОГДА не коммитить.
+n8n-data/
+
+# Секреты и ключи
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*-service-account*.json
+credentials*.json
+secrets*.json
+
+# Системное
+.DS_Store
+Thumbs.db
+*.log

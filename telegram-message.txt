@@ -1,0 +1,10 @@
+🔔 Новая заявка — приоритет: {{ $json.priority }}
+
+👤 Имя: {{ $json.name }}
+📞 Телефон: {{ $json.phone.replace(/^'/, '') }}
+✉️ Email: {{ $json.email }}
+🏷 Категория: {{ $json.category }}
+
+📝 {{ $json.summary }}
+
+➡️ Следующий шаг: {{ $json.next_step }}
