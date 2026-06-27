@@ -1,5 +1,12 @@
 # AI CRM Automation Suite
 
+![n8n](https://img.shields.io/badge/n8n-orchestration-EA4B71)
+![Claude](https://img.shields.io/badge/Claude-Haiku%204.5-D97757)
+![Google Sheets](https://img.shields.io/badge/Google%20Sheets-CRM-34A853)
+![Telegram](https://img.shields.io/badge/Telegram-notifications-26A5E4)
+![RAG](https://img.shields.io/badge/RAG-Mistral%20embeddings-5A67D8)
+![Docker](https://img.shields.io/badge/Docker-self--hosted-2496ED)
+
 Система автоматической обработки входящих заявок на базе AI: принимает заявку,
 **анализирует её LLM**, заносит в CRM, мгновенно уведомляет менеджера, строит дашборд
 и отвечает на вопросы клиентов по базе знаний (RAG).
@@ -77,6 +84,21 @@
   хранящий секрет, либо подпись запроса.
 
 ---
+
+## Структура репозитория
+
+| Файл / папка | Что это |
+|---|---|
+| `docker-compose.yml` | Поднять n8n (self-host) |
+| `workflows/` | Экспорт n8n: `crm-pipeline`, `rag-indexing`, `rag-chatbot` — импортировать в n8n |
+| `claude-request-body.json` | Тело запроса к Claude (строгий JSON через `output_config.format`) |
+| `parse-code-node.js` | Парсинг ответа AI + merge с заявкой + graceful degradation |
+| `knowledge-base.md` | База знаний для RAG-бота |
+| `lead-form.html` | Демо-форма заявки (шлёт секретный заголовок) |
+| `.env.example` | Шаблон переменных окружения (реальный `.env` в git не попадает) |
+
+> Credentials (Anthropic, Google Service Account, Telegram, Mistral) и `n8n-data/`
+> в репозиторий **не входят** — настраиваются локально.
 
 ## Демо (локальный запуск)
 
