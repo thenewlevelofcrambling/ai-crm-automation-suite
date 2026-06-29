@@ -5,6 +5,7 @@
 ![Google Sheets](https://img.shields.io/badge/Google%20Sheets-CRM-34A853)
 ![Telegram](https://img.shields.io/badge/Telegram-notifications-26A5E4)
 ![RAG](https://img.shields.io/badge/RAG-Mistral%20embeddings-5A67D8)
+![Supabase](https://img.shields.io/badge/Supabase-pgvector-3ECF8E)
 ![Docker](https://img.shields.io/badge/Docker-self--hosted-2496ED)
 
 Система автоматической обработки входящих заявок на базе AI: принимает заявку,
@@ -41,7 +42,7 @@
 [Telegram]       ── мгновенное уведомление менеджеру
 
 [Looker Studio]  ── дашборд (конверсия, приоритеты) — читает Sheets
-[RAG-бот]        ── вопросы по базе знаний: Mistral-эмбеддинги + векторный поиск + Claude
+[RAG-бот]        ── вопросы по базе знаний: Mistral-эмбеддинги + Supabase/pgvector (постоянный векторный поиск) + Claude
 ```
 
 ---
@@ -56,7 +57,7 @@
 | Уведомления | **Telegram Bot API** | Мгновенный push, менеджер уже там. |
 | Дашборд | **Looker Studio** | Бесплатно, нативно к Sheets. |
 | Эмбеддинги | **Mistral (mistral-embed)** | Claude не делает эмбеддинги; Mistral доступен и дёшев. |
-| Векторное хранилище | **n8n In-Memory** | Для MVP; теряется при рестарте → прод: Qdrant/Supabase/pgvector. |
+| Векторное хранилище | **Supabase (pgvector)** | Постоянное: переживает рестарт n8n. Размерность `vector(1024)` = выходу Mistral. Поиск через SQL-функцию `match_documents` (косинусная близость). |
 
 ---
 
@@ -79,7 +80,8 @@
   (`hash(email+message)`) + проверка существования перед записью.
 - **Race condition при записи в Sheets:** конкурентные Append затирают строки. Решение —
   последовательная обработка / очередь / БД с транзакциями.
-- **Векторное хранилище в памяти:** перейти на постоянную векторную БД.
+- ~~**Векторное хранилище в памяти:**~~ ✅ решено — переведено на **Supabase (pgvector)**,
+  вектора переживают рестарт (см. `supabase-setup.sql`).
 - **Секрет в клиентской форме виден:** в проде форму обслуживает сервер (Tally/бэкенд),
   хранящий секрет, либо подпись запроса.
 
@@ -94,6 +96,7 @@
 | `claude-request-body.json` | Тело запроса к Claude (строгий JSON через `output_config.format`) |
 | `parse-code-node.js` | Парсинг ответа AI + merge с заявкой + graceful degradation |
 | `knowledge-base.md` | База знаний для RAG-бота |
+| `supabase-setup.sql` | Настройка Supabase: pgvector + таблица `documents` + функция поиска `match_documents` |
 | `lead-form.html` | Демо-форма заявки (шлёт секретный заголовок) |
 | `.env.example` | Шаблон переменных окружения (реальный `.env` в git не попадает) |
 
@@ -103,10 +106,12 @@
 ## Демо (локальный запуск)
 
 1. `docker compose up -d` — поднимает n8n на `localhost:5678`.
-2. Импортировать workflow'ы (CRM-пайплайн, RAG-индексация, RAG-чат).
-3. Настроить credentials: Anthropic, Google Service Account, Telegram, Mistral.
-4. Открыть `lead-form.html`, отправить заявку → строка в Sheets + уведомление в Telegram.
-5. Дашборд — в Looker Studio поверх таблицы. RAG-бот — чат в n8n.
+2. В Supabase выполнить `supabase-setup.sql` (pgvector + таблица + функция поиска).
+3. Импортировать workflow'ы (CRM-пайплайн, RAG-индексация, RAG-чат).
+4. Настроить credentials: Anthropic, Google Service Account, Telegram, Mistral, **Supabase**.
+5. Открыть `lead-form.html`, отправить заявку → строка в Sheets + уведомление в Telegram.
+6. Запустить **RAG-индексацию** один раз (зальёт базу знаний в Supabase), затем чат-бот отвечает по ней.
+7. Дашборд — в Looker Studio поверх таблицы. RAG-бот — чат в n8n.
 
 ## Лицензия
 
