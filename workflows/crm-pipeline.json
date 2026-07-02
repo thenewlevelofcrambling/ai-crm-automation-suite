@@ -64,7 +64,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Нода Code в n8n. Mode: \"Run Once for All Items\".\n// Парсит ответ Claude, сливает с данными заявки и НИКОГДА не теряет лид.\n\n// Данные заявки берём из Webhook-ноды (всегда есть).\nconst lead = $('Webhook').first().json.body;\n\n// Пытаемся распарсить ответ AI. Если AI упал, вернул не-JSON,\n// или HTTP-нода передала ошибку (On Error: Continue) — НЕ роняем поток,\n// а подставляем безопасные значения, чтобы заявка дошла до менеджера.\nlet ai;\ntry {\n  ai = JSON.parse($input.first().json.content[0].text);\n} catch (e) {\n  ai = {\n    category: \"Не определён\",\n    priority: \"Не определён\",\n    summary: \"AI не смог обработать заявку — нужна ручная проверка.\",\n    next_step: \"Связаться с клиентом вручную\",\n  };\n}\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    ...lead,\n    // Ведущий апостроф: чтобы Sheets не принял \"+7...\" за формулу (#ERROR!).\n    phone: \"'\" + lead.phone,\n    ...ai,\n    status: \"Новая\",\n  },\n}];\n"
+        "jsCode": "// Нода Code в n8n. Mode: \"Run Once for All Items\".\n// Парсит ответ Claude, сливает с данными заявки и НИКОГДА не теряет лид.\n\n// Данные заявки берём из Webhook-ноды (всегда есть).\nconst lead = $('Webhook').first().json.body;\n\n// Пытаемся распарсить ответ AI. Если AI упал, вернул не-JSON,\n// или HTTP-нода передала ошибку (On Error: Continue) — НЕ роняем поток,\n// а подставляем безопасные значения, чтобы заявка дошла до менеджера.\nlet ai;\ntry {\n  ai = JSON.parse($input.first().json.content[0].text);\n} catch (e) {\n  ai = {\n    category: \"Не определён\",\n    priority: \"Не определён\",\n    summary: \"AI не смог обработать заявку — нужна ручная проверка.\",\n    next_step: \"Связаться с клиентом вручную\",\n  };\n}\n\nreturn [{\n  json: {\n    // created_at заполняет Postgres сама (DEFAULT now()); апостроф для Sheets больше не нужен.\n    ...lead,\n    ...ai,\n    status: \"Новая\",\n  },\n}];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -77,142 +77,30 @@
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "YOUR_GOOGLE_SHEET_ID",
-          "mode": "list",
-          "cachedResultName": "ai crm",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Лист1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "timestamp",
-              "displayName": "timestamp",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "name",
-              "displayName": "name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "email",
-              "displayName": "email",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "phone",
-              "displayName": "phone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "message",
-              "displayName": "message",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "category",
-              "displayName": "category",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "priority",
-              "displayName": "priority",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "summary",
-              "displayName": "summary",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "next_step",
-              "displayName": "next_step",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
+        "operation": "create",
+        "tableId": "leads",
+        "dataToSend": "autoMapInputData",
         "options": {}
       },
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
       "position": [
         560,
         144
       ],
       "id": "675f1145-4217-4b31-901b-7d878177ed19",
-      "name": "Append row in sheet",
+      "name": "Insert lead (Supabase)",
       "credentials": {
-        "googleApi": {
-          "id": "PnIJdAfM3wkEX6R7",
-          "name": "Google Sheets account"
+        "supabaseApi": {
+          "id": "REPLACE_WITH_YOUR_SUPABASE_CRED_ID",
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
         "chatId": "YOUR_TELEGRAM_CHAT_ID",
-        "text": "=🔔 Новая заявка — приоритет: {{ $json.priority }}  👤 Имя: {{ $json.name }} 📞 Телефон: {{ $json.phone.replace(/^'/, '') }} ✉️ Email: {{ $json.email }} 🏷 Категория: {{ $json.category }}  📝 {{ $json.summary }}  ➡️ Следующий шаг: {{ $json.next_step }}",
+        "text": "=🔔 Новая заявка — приоритет: {{ $('Code in JavaScript').item.json.priority }}  👤 Имя: {{ $('Code in JavaScript').item.json.name }} 📞 Телефон: {{ $('Code in JavaScript').item.json.phone }} ✉️ Email: {{ $('Code in JavaScript').item.json.email }} 🏷 Категория: {{ $('Code in JavaScript').item.json.category }}  📝 {{ $('Code in JavaScript').item.json.summary }}  ➡️ Следующий шаг: {{ $('Code in JavaScript').item.json.next_step }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
@@ -260,14 +148,14 @@
       "main": [
         [
           {
-            "node": "Append row in sheet",
+            "node": "Insert lead (Supabase)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Append row in sheet": {
+    "Insert lead (Supabase)": {
       "main": [
         [
           {

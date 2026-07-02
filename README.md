@@ -2,7 +2,7 @@
 
 ![n8n](https://img.shields.io/badge/n8n-orchestration-EA4B71)
 ![Claude](https://img.shields.io/badge/Claude-Haiku%204.5-D97757)
-![Google Sheets](https://img.shields.io/badge/Google%20Sheets-CRM-34A853)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20CRM-3ECF8E)
 ![Telegram](https://img.shields.io/badge/Telegram-notifications-26A5E4)
 ![RAG](https://img.shields.io/badge/RAG-Mistral%20embeddings-5A67D8)
 ![Supabase](https://img.shields.io/badge/Supabase-pgvector-3ECF8E)
@@ -37,11 +37,11 @@
      ▼
 [Code: parse + merge]  ── разбор JSON, объединение с данными заявки, graceful degradation
      ▼
-[Google Sheets]  ── CRM-хранилище
+[Supabase (Postgres)]  ── CRM-хранилище (таблица leads), транзакции вместо гонки записи
      ▼
 [Telegram]       ── мгновенное уведомление менеджеру
 
-[Looker Studio]  ── дашборд (конверсия, приоритеты) — читает Sheets
+[Looker Studio]  ── дашборд (конверсия, приоритеты) — читает Supabase (Postgres-коннектор)
 [RAG-бот]        ── вопросы по базе знаний: Mistral-эмбеддинги + Supabase/pgvector (постоянный векторный поиск) + Claude
 ```
 
@@ -53,7 +53,7 @@
 |---|---|---|
 | Оркестрация | **n8n** (self-host, Docker) | Быстрый MVP, видимый поток. На больших нагрузках — код. |
 | LLM-анализ | **Claude (claude-haiku-4-5)** | Right-sizing: классификация — простая задача, Haiku дешевле/быстрее Opus в 5 раз. |
-| Хранилище | **Google Sheets** | Бесплатно, наглядно. Не БД: нет транзакций, гонки при конкурентной записи → на проде Postgres/Airtable. |
+| Хранилище заявок | **Supabase (Postgres)** | Настоящая БД: транзакции (нет гонки записи), индексы, SQL. Таблица `leads`, `created_at` через DEFAULT. RLS включён. |
 | Уведомления | **Telegram Bot API** | Мгновенный push, менеджер уже там. |
 | Дашборд | **Looker Studio** | Бесплатно, нативно к Sheets. |
 | Эмбеддинги | **Mistral (mistral-embed)** | Claude не делает эмбеддинги; Mistral доступен и дёшев. |
@@ -78,8 +78,8 @@
 
 - **Идемпотентность:** двойная отправка формы создаёт дубль. Решение — ключ идемпотентности
   (`hash(email+message)`) + проверка существования перед записью.
-- **Race condition при записи в Sheets:** конкурентные Append затирают строки. Решение —
-  последовательная обработка / очередь / БД с транзакциями.
+- ~~**Race condition при записи в Sheets:**~~ ✅ решено — заявки переехали в **Supabase
+  (Postgres)**, транзакции БД исключают гонку при конкурентной записи.
 - ~~**Векторное хранилище в памяти:**~~ ✅ решено — переведено на **Supabase (pgvector)**,
   вектора переживают рестарт (см. `supabase-setup.sql`).
 - **Секрет в клиентской форме виден:** в проде форму обслуживает сервер (Tally/бэкенд),
@@ -96,7 +96,7 @@
 | `claude-request-body.json` | Тело запроса к Claude (строгий JSON через `output_config.format`) |
 | `parse-code-node.js` | Парсинг ответа AI + merge с заявкой + graceful degradation |
 | `knowledge-base.md` | База знаний для RAG-бота |
-| `supabase-setup.sql` | Настройка Supabase: pgvector + таблица `documents` + функция поиска `match_documents` |
+| `supabase-setup.sql` | Настройка Supabase: pgvector + `documents` + `match_documents` (RAG) + таблица `leads` (CRM) + RLS |
 | `lead-form.html` | Демо-форма заявки (шлёт секретный заголовок) |
 | `.env.example` | Шаблон переменных окружения (реальный `.env` в git не попадает) |
 
@@ -106,12 +106,12 @@
 ## Демо (локальный запуск)
 
 1. `docker compose up -d` — поднимает n8n на `localhost:5678`.
-2. В Supabase выполнить `supabase-setup.sql` (pgvector + таблица + функция поиска).
+2. В Supabase выполнить `supabase-setup.sql` (pgvector + `documents` + `match_documents` + `leads` + RLS).
 3. Импортировать workflow'ы (CRM-пайплайн, RAG-индексация, RAG-чат).
-4. Настроить credentials: Anthropic, Google Service Account, Telegram, Mistral, **Supabase**.
-5. Открыть `lead-form.html`, отправить заявку → строка в Sheets + уведомление в Telegram.
+4. Настроить credentials: Anthropic, Telegram, Mistral, **Supabase**.
+5. Открыть `lead-form.html`, отправить заявку → строка в таблице `leads` (Supabase) + уведомление в Telegram.
 6. Запустить **RAG-индексацию** один раз (зальёт базу знаний в Supabase), затем чат-бот отвечает по ней.
-7. Дашборд — в Looker Studio поверх таблицы. RAG-бот — чат в n8n.
+7. Дашборд — в Looker Studio поверх Supabase (Postgres-коннектор). RAG-бот — чат в n8n.
 
 ## Лицензия
 

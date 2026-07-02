@@ -55,3 +55,29 @@ create index if not exists documents_embedding_idx
 --    а посторонние с публичным ключом к таблице не подберутся.
 --    Политики не нужны: прямого публичного доступа к documents нет.
 alter table documents enable row level security;
+
+-- ============================================================
+-- 6. Таблица заявок (CRM) — заменяет Google Sheets.
+--    Транзакции (нет race condition при конкурентной записи),
+--    индексы и нормальные запросы. created_at заполняется сама.
+-- ============================================================
+create table if not exists leads (
+  id         bigserial primary key,
+  created_at timestamptz default now(),
+  name       text,
+  email      text,
+  phone      text,          -- в Postgres обычный текст, апостроф не нужен (в отличие от Sheets)
+  message    text,
+  category   text,
+  priority   text,          -- Высокий / Средний / Низкий / Не определён
+  summary    text,
+  next_step  text,
+  status     text default 'Новая'
+);
+
+-- RLS: заявки трогает только n8n сервис-ключом (обходит RLS). Публичный доступ закрыт.
+alter table leads enable row level security;
+
+-- Индекс для быстрых выборок (дашборд, разбор горящих лидов)
+create index if not exists leads_priority_created_idx
+  on leads (priority, created_at desc);

@@ -21,10 +21,9 @@ try {
 
 return [{
   json: {
-    timestamp: new Date().toISOString(),
+    // Хранилище — Supabase (Postgres). created_at заполняет БД сама (DEFAULT now()).
+    // Апостроф к телефону больше не нужен — это был костыль под Google Sheets.
     ...lead,
-    // Ведущий апостроф: чтобы Sheets не принял "+7..." за формулу (#ERROR!).
-    phone: "'" + lead.phone,
     ...ai,
     status: "Новая",
   },
